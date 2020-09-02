@@ -1,10 +1,16 @@
 package uk.ac.cam.cares.jps.base.query;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.InputStream;
+
 import org.apache.jena.ontology.OntModel;
 import org.apache.jena.query.ResultSet;
 import org.apache.jena.update.UpdateAction;
 import org.apache.jena.update.UpdateFactory;
 import org.apache.jena.update.UpdateRequest;
+
+import java.util.logging.Logger;
 import org.json.JSONObject;
 
 import uk.ac.cam.cares.jps.base.config.JPSConstants;
@@ -16,7 +22,7 @@ import uk.ac.cam.cares.jps.base.scenario.JPSContext;
 import uk.ac.cam.cares.jps.base.scenario.ScenarioHelper;
 
 public class KnowledgeBaseClient {
-	
+	private static final Logger log = Logger.getLogger(KnowledgeBaseClient.class.getName());
 	private static KnowledgeBaseClient instance = null;
 	
 	private static synchronized KnowledgeBaseClient getInstance() {
@@ -37,7 +43,6 @@ public class KnowledgeBaseClient {
 	public static String put(String datasetUrl, String targetUrl, String content, String contentType) {
 		
 		JPSBaseLogger.info(getInstance(), "put for datasetUrl=" + datasetUrl + ", targetUrl=" + targetUrl + ", scenarioUrl=" + JPSContext.getScenarioUrl());
-
 		Object[] a = createRequestUrl(datasetUrl, targetUrl, true);
 		
 		if (a != null) {
@@ -94,7 +99,7 @@ public class KnowledgeBaseClient {
 		// 1a) HTTP GET on target resource allows to perform SPARQL at the server 
 		// 1b) HTTP GET on target resource to download its content but the SPARQL query must be performed at this client
 		//	   (this is the case for most of the resources outside JPS control but also for files residing 
-		//     in /kb or /data within Tomcat´s ROOT directory)
+		//     in /kb or /data within Tomcats ROOT directory)
 		// 2) the datasetUrl is given, no scenarioUrl in the JPS context
 		//	  This means that the target resource is only requested indirectly via the datasetUrl 
 		// 	  as SPARQL endpoint (such that SPARQL is performed at the endpoint)
