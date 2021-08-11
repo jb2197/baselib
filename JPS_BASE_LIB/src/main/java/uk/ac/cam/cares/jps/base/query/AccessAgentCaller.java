@@ -17,18 +17,17 @@ import uk.ac.cam.cares.jps.base.http.Http;
 import uk.ac.cam.cares.jps.base.scenario.JPSContext;
 import uk.ac.cam.cares.jps.base.scenario.ScenarioHelper;
 
-public class KnowledgeBaseClient {
+public class AccessAgentCaller{
 
     /**
      * Logger for error output.
      */
-    private static final Logger LOGGER = LogManager.getLogger(KnowledgeBaseClient.class);
+    private static final Logger LOGGER = LogManager.getLogger(AccessAgentCaller.class);
 
     /**
      * Default constructor
      */
-    public KnowledgeBaseClient() {
-    }
+	public AccessAgentCaller() {}	
 
     /**
      * https://www.w3.org/TR/2013/REC-sparql11-http-rdf-update-20130321/#http-put<br>
@@ -40,7 +39,7 @@ public class KnowledgeBaseClient {
      */
     public static String put(String datasetUrl, String targetUrl, String content, String contentType) {
 
-        LOGGER.info("put for datasetUrl=" + datasetUrl + ", targetUrl=" + targetUrl + ", scenarioUrl=" + JPSContext.getScenarioUrl());
+		LOGGER.info("put for datasetUrl=" + datasetUrl + ", targetUrl=" + targetUrl + ", scenarioUrl=" + JPSContext.getScenarioUrl());
         Object[] a = createRequestUrl(datasetUrl, targetUrl, true);
 
         if (a != null) {
