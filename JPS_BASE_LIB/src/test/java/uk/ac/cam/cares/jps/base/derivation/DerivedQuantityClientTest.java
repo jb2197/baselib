@@ -1,4 +1,4 @@
-package uk.ac.cam.cares.jps.base.derivedquantity;
+package uk.ac.cam.cares.jps.base.derivation;
 
 import java.lang.reflect.Field;
 import java.util.Arrays;
@@ -14,8 +14,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import uk.ac.cam.cares.jps.base.derivedquantity.DerivedQuantityClient;
-import uk.ac.cam.cares.jps.base.derivedquantity.DerivedQuantitySparql;
+import uk.ac.cam.cares.jps.base.exception.JPSRuntimeException;
 import uk.ac.cam.cares.jps.base.query.RemoteStoreClient;
 
 /**
@@ -25,7 +24,7 @@ import uk.ac.cam.cares.jps.base.query.RemoteStoreClient;
  */
 public class DerivedQuantityClientTest{
 	private MockDevStoreClient mockClient;
-	private DerivedQuantityClient devClient;
+	private DerivationClient devClient;
 	private String entity1 = "http://entity1"; 
 	private String entity2 = "http://entity2"; 
     private List<String> entities = Arrays.asList(entity1,entity2);
@@ -43,7 +42,7 @@ public class DerivedQuantityClientTest{
     public void initialiseSparqlClient() {
         OntModel kb = ModelFactory.createOntologyModel();
         mockClient = new MockDevStoreClient(kb);
-        devClient = new DerivedQuantityClient(mockClient);
+        devClient = new DerivationClient(mockClient);
     }
 	
 	@After
@@ -54,7 +53,7 @@ public class DerivedQuantityClientTest{
 	@Test
     public void testConstructor() throws NoSuchFieldException, IllegalArgumentException, IllegalAccessException {
     	RemoteStoreClient kbClient = new RemoteStoreClient();    
-    	DerivedQuantityClient client = new DerivedQuantityClient(kbClient);
+    	DerivationClient client = new DerivationClient(kbClient);
     	// Retrieve the value of the private field 'kbClient' of the client
         Field kbc = client.getClass().getDeclaredField("kbClient");
         kbc.setAccessible(true);
@@ -64,83 +63,71 @@ public class DerivedQuantityClientTest{
     }
 	
 	@Test
-	public void testKeys() {
-		Assert.assertEquals("agent_input", DerivedQuantityClient.AGENT_INPUT_KEY);
-		Assert.assertEquals("agent_output", DerivedQuantityClient.AGENT_OUTPUT_KEY);
-	}
-	
-	@Test
 	public void testCreateDerivedQuantity() {
-		String createdDerived = devClient.createDerivedQuantity(entities, derivedAgentIRI, derivedAgentURL, inputs);
+		String createdDerived = devClient.createDerivation(entities, derivedAgentIRI, derivedAgentURL, inputs);
 		OntModel testKG = mockClient.getKnowledgeBase();
 		Individual devIndividual = testKG.getIndividual(createdDerived);
 		Assert.assertNotNull(devIndividual);
-		Assert.assertEquals(DerivedQuantitySparql.derivednamespace + "DerivedQuantity", devIndividual.getRDFType().toString()) ;
+		Assert.assertEquals(DerivationSparql.derivednamespace + "Derivation", devIndividual.getRDFType().toString()) ;
 		
 		// check that each entity is connected to the derived instance
 		for (String entity : entities) {
 		    Assert.assertTrue(testKG.contains(testKG.getIndividual(entity), 
-		    		ResourceFactory.createProperty(DerivedQuantitySparql.derivednamespace+"belongsTo"),
+		    		ResourceFactory.createProperty(DerivationSparql.derivednamespace+"belongsTo"),
 		    		devIndividual));
 		}
 		
 		// checks for agent
 		Assert.assertTrue(testKG.contains(devIndividual,
-				ResourceFactory.createProperty(DerivedQuantitySparql.derivednamespace+"isDerivedUsing"),
+				ResourceFactory.createProperty(DerivationSparql.derivednamespace+"isDerivedUsing"),
 				testKG.getIndividual(derivedAgentIRI)));
-		Assert.assertTrue(testKG.contains(testKG.getIndividual(derivedAgentIRI), 
-				ResourceFactory.createProperty("http://www.theworldavatar.com/ontology/ontoagent/MSM.owl#hasHttpUrl"),
-				ResourceFactory.createResource(derivedAgentURL)));
-		
+		RDFNode operation = testKG.getIndividual(derivedAgentIRI).getProperty(ResourceFactory.createProperty("http://www.theworldavatar.com/ontology/ontoagent/MSM.owl#hasOperation")).getObject();
+		RDFNode url = testKG.getIndividual(operation.toString()).getProperty(ResourceFactory.createProperty("http://www.theworldavatar.com/ontology/ontoagent/MSM.owl#hasHttpUrl")).getObject();
+        Assert.assertEquals(derivedAgentURL, url.toString());
+        
 		// checks for inputs
 		for (String input : inputs) {
 			Assert.assertTrue(testKG.contains(devIndividual,
-					ResourceFactory.createProperty(DerivedQuantitySparql.derivednamespace+"isDerivedFrom"),
+					ResourceFactory.createProperty(DerivationSparql.derivednamespace+"isDerivedFrom"),
 					ResourceFactory.createResource(input)));
 		}
 		
 		// an instance cannot be part of two derived quantities
-        try {
-        	devClient.createDerivedQuantity(entities, derivedAgentIRI3, derivedAgentURL3, inputs);
-        } catch (Exception e) {
-        	Assert.assertTrue(e.getMessage().contains("part of another derived quantity"));
-        }
+		JPSRuntimeException e = Assert.assertThrows(JPSRuntimeException.class, () -> devClient.createDerivation(entities, derivedAgentIRI3, derivedAgentURL3, inputs));
+        Assert.assertTrue(e.getMessage().contains("part of another derivation"));
 	}
 	
 	@Test
 	public void testCreateDerivedQuantityWithTimeSeries() {
-		String createdDerived = devClient.createDerivedQuantityWithTimeSeries(entity1, derivedAgentIRI, derivedAgentURL, inputs);
+		String createdDerived = devClient.createDerivationWithTimeSeries(Arrays.asList(entity1), derivedAgentIRI, derivedAgentURL, inputs);
 		OntModel testKG = mockClient.getKnowledgeBase();
 		Individual devIndividual = testKG.getIndividual(createdDerived);
 		Assert.assertNotNull(devIndividual);
-		Assert.assertEquals(DerivedQuantitySparql.derivednamespace + "DerivedQuantityWithTimeSeries", devIndividual.getRDFType().toString()) ;
+		Assert.assertEquals(DerivationSparql.derivednamespace + "DerivationWithTimeSeries", devIndividual.getRDFType().toString()) ;
 		
 		// check that entity is connected to the derived instance
 	    Assert.assertTrue(testKG.contains(testKG.getIndividual(entity1), 
-	    		ResourceFactory.createProperty(DerivedQuantitySparql.derivednamespace+"belongsTo"),
+	    		ResourceFactory.createProperty(DerivationSparql.derivednamespace+"belongsTo"),
 	    		devIndividual));
 		
 		// checks for agent
 		Assert.assertTrue(testKG.contains(devIndividual,
-				ResourceFactory.createProperty(DerivedQuantitySparql.derivednamespace+"isDerivedUsing"),
+				ResourceFactory.createProperty(DerivationSparql.derivednamespace+"isDerivedUsing"),
 				testKG.getIndividual(derivedAgentIRI)));
-		Assert.assertTrue(testKG.contains(testKG.getIndividual(derivedAgentIRI), 
-				ResourceFactory.createProperty("http://www.theworldavatar.com/ontology/ontoagent/MSM.owl#hasHttpUrl"),
-				ResourceFactory.createResource(derivedAgentURL)));
+		RDFNode operation = testKG.getIndividual(derivedAgentIRI).getProperty(ResourceFactory.createProperty("http://www.theworldavatar.com/ontology/ontoagent/MSM.owl#hasOperation")).getObject();
+		RDFNode url = testKG.getIndividual(operation.toString()).getProperty(ResourceFactory.createProperty("http://www.theworldavatar.com/ontology/ontoagent/MSM.owl#hasHttpUrl")).getObject();
+        Assert.assertEquals(derivedAgentURL, url.toString());
 		
 		// checks for inputs
 		for (String input : inputs) {
 			Assert.assertTrue(testKG.contains(devIndividual,
-					ResourceFactory.createProperty(DerivedQuantitySparql.derivednamespace+"isDerivedFrom"),
+					ResourceFactory.createProperty(DerivationSparql.derivednamespace+"isDerivedFrom"),
 					ResourceFactory.createResource(input)));
 		}
 		
 		// an instance cannot be part of two derived quantities
-        try {
-        	devClient.createDerivedQuantityWithTimeSeries(entity2, derivedAgentIRI3, derivedAgentURL3, inputs);
-        } catch (Exception e) {
-        	Assert.assertTrue(e.getMessage().contains("part of another derived quantity"));
-        }
+		JPSRuntimeException e = Assert.assertThrows(JPSRuntimeException.class, () -> devClient.createDerivationWithTimeSeries(Arrays.asList(entity1), derivedAgentIRI3, derivedAgentURL3, inputs));
+        Assert.assertTrue(e.getMessage().contains("part of another derivation"));
 	}
 	
 	@Test
@@ -150,38 +137,45 @@ public class DerivedQuantityClientTest{
 		OntModel testKG = mockClient.getKnowledgeBase();
 		RDFNode timeInstance = testKG.getIndividual(input1).getProperty(ResourceFactory.createProperty(namespace+"hasTime")).getObject();
 		Assert.assertTrue(timeInstance.isResource());
-		RDFNode timestamp = testKG.getIndividual(timeInstance.toString()).getProperty(ResourceFactory.createProperty(namespace+"numericPosition")).getObject();
+		RDFNode timeposition = testKG.getIndividual(timeInstance.toString()).getProperty(ResourceFactory.createProperty(namespace+"inTimePosition")).getObject();
+		Assert.assertTrue(timeposition.isResource());
+		RDFNode timestamp = testKG.getIndividual(timeposition.toString()).getProperty(ResourceFactory.createProperty(namespace+"numericPosition")).getObject();
 		Assert.assertTrue(timestamp.isLiteral());
 	}
 	
 	@Test
 	public void testUpdateTimestamp() {
 		String namespace = "http://www.w3.org/2006/time#";
-		String devInstance = devClient.createDerivedQuantityWithTimeSeries(entity1, derivedAgentIRI, derivedAgentURL, inputs);
+		String devInstance = devClient.createDerivationWithTimeSeries(Arrays.asList(entity1), derivedAgentIRI, derivedAgentURL, inputs);
 		OntModel testKG = mockClient.getKnowledgeBase();
 		long oldtime = testKG.getIndividual(devInstance).getProperty(ResourceFactory.createProperty(namespace+"hasTime")).getResource()
+		.getProperty(ResourceFactory.createProperty(namespace+"inTimePosition")).getResource()
 		.getProperty(ResourceFactory.createProperty(namespace+"numericPosition")).getLong();
 		devClient.updateTimestamp(devInstance);
 		long newtime = testKG.getIndividual(devInstance).getProperty(ResourceFactory.createProperty(namespace+"hasTime")).getResource()
+				.getProperty(ResourceFactory.createProperty(namespace+"inTimePosition")).getResource()
 				.getProperty(ResourceFactory.createProperty(namespace+"numericPosition")).getLong();
 		Assert.assertTrue(newtime > oldtime);
 	}
 	
 	@Test
 	public void testValidateDerived() {
-		devClient.createDerivedQuantity(Arrays.asList(entity1), derivedAgentIRI, derivedAgentURL, inputs);
-		String derived2 = devClient.createDerivedQuantity(Arrays.asList(entity2), derivedAgentIRI2, derivedAgentURL2, Arrays.asList(entity1));
+		devClient.createDerivation(Arrays.asList(entity1), derivedAgentIRI, derivedAgentURL, inputs);
+		String derived2 = devClient.createDerivation(Arrays.asList(entity2), derivedAgentIRI2, derivedAgentURL2, Arrays.asList(entity1));
 		
 		// inputs do not have timestamps yet
-		Assert.assertFalse(devClient.validateDerived(derived2));
+		JPSRuntimeException e = Assert.assertThrows(JPSRuntimeException.class, () -> devClient.validateDerivation(derived2));
+		Assert.assertTrue(e.getMessage().contains("No timestamp"));
+
 		for (String input:inputs) {
 			devClient.addTimeInstance(input);
 		}
 		
-		Assert.assertTrue(devClient.validateDerived(derived2));
+		Assert.assertTrue(devClient.validateDerivation(derived2));
 		
 	    // intentionally create a circular dependency
-		String derived3 = devClient.createDerivedQuantity(inputs, derivedAgentIRI3, derivedAgentURL3, Arrays.asList(entity1));
-		Assert.assertFalse(devClient.validateDerived(derived3));
+		String derived3 = devClient.createDerivation(inputs, derivedAgentIRI3, derivedAgentURL3, Arrays.asList(entity1));
+		e = Assert.assertThrows(JPSRuntimeException.class, () -> devClient.validateDerivation(derived3));
+		Assert.assertTrue(e.getMessage().contains("Edge would induce a cycle"));
 	}
 }
