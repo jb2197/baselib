@@ -1,13 +1,13 @@
 #!/bin/bash
-# D. Nurkowski (danieln@cmclinnovations.com)
+# J. Bai (jb2197@cam.ac.uk), based on https://github.com/cambridge-cares/TheWorldAvatar/blob/develop/JPS_BASE_LIB/python_wrapper/install_script_pip.sh provided by D. Nurkowski (danieln@cmclinnovations.com)
 
-AUTHOR="Daniel Nurkowski <danieln@cmclinnovations.com>"
+AUTHOR="Jiaru Bai <jb2197@cam.ac.uk>, based on https://github.com/cambridge-cares/TheWorldAvatar/blob/develop/JPS_BASE_LIB/python_wrapper/install_script_pip.sh provided by Daniel Nurkowski <danieln@cmclinnovations.com>"
 SPATH="$( cd  "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 CREATE_VENV='n'
-VENV_NAME='py4jps_venv'
+VENV_NAME='pyasyncagent_venv'
 VENV_DIR=$SPATH
 DEV_INSTALL=''
-PROJ_NAME='py4jps'
+PROJ_NAME='pyasyncagent'
 
 function usage {
     echo "==============================================================================================================="
@@ -96,7 +96,7 @@ function install_project {
     $PIPPATH --disable-pip-version-check install $DEV_INSTALL $SPATH
     if [[ "${DEV_INSTALL}" == "-e" ]];
     then
-        $PIPPATH --disable-pip-version-check install -r $SPATH"/"dev_requirements.txt
+        $PIPPATH --disable-pip-version-check install -e $SPATH"[dev]"
     fi
     if [ $? -eq 0 ]; then
     	echo ""
@@ -111,6 +111,36 @@ function install_project {
         exit -1
     fi
 
+}
+
+function install_agentlogging_workaround {
+    echo "Installing the agentlogging package"
+    echo "-----------------------------------------------"
+    echo "As PyPI does NOT allow install_requires direct"
+    echo "links, so we could NOT add package agentlogging"
+    echo "from 'agentlogging @ git+https://github.com/cambridge-cares/TheWorldAvatar@develop#subdirectory=Agents/utils/python-utils'"
+    echo "as dependency, therefore, in order to pass the"
+    echo "run_pyasyncagent_tests() and release_to_pypi(),"
+    echo " we here introduce a workaround here to install"
+    echo "agentlogging to the virtual environment but NOT"
+    echo "as dependency in the setup.py"
+    echo "-----------------------------------------------"
+    echo
+    get_pip_path
+    $PIPPATH --disable-pip-version-check install "git+https://github.com/cambridge-cares/TheWorldAvatar@develop#subdirectory=Agents/utils/python-utils"
+
+    if [ $? -eq 0 ]; then
+        echo ""
+        echo "    INFO: installation complete."
+        echo "-----------------------------------------"
+    else
+        echo ""
+        echo ""
+        echo "    ERROR: installation failed."
+        echo "-----------------------------------------"
+        read -n 1 -s -r -p "Press any key to continue"
+        exit -1
+    fi
 }
 
 # Scan command-line arguments
@@ -144,6 +174,7 @@ fi
 if [[ $INSTALL_PROJ == 'y' ]]
 then
     install_project
+    install_agentlogging_workaround
 fi
 
 echo
