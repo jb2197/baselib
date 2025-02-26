@@ -38,7 +38,7 @@
         <repository>
             <id>github</id>
             <name>TheWorldAvatar Maven Repository</name>
-            <url>https://maven.pkg.github.com/TheWorldAvatar/BaseLib</url>
+            <url>https://maven.pkg.github.com/TheWorldAvatar/baselib</url>
         </repository>
     </distributionManagement>
 
