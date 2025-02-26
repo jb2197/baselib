@@ -33,6 +33,8 @@ jobs:
       # Checkout the repository
       - name: Checkout repository
         uses: actions/checkout@v4
+permissions:
+  contents: read
 
       # Set up JDK 11
       - name: Set up JDK 11
@@ -46,16 +48,14 @@ jobs:
       - name: Build code (no tests)
         working-directory: .
         env:
-          GITHUB_ACTOR: ${{github.actor}}
-          GITHUB_TOKEN: ${{github.token}}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: mvn -DskipTests package
 
       # Run all tests (even if some fail)
       - name: Run all tests
         working-directory: .
         env:
-          GITHUB_ACTOR: ${{github.actor}}
-          GITHUB_TOKEN: ${{github.token}}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  
         run: mvn -Dmaven.test.failure.ignore=true test
         
       # Produce test report
