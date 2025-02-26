@@ -45,18 +45,12 @@ jobs:
       # Build the code without test
       - name: Build code (no tests)
         working-directory: .
-        env:
-          MAVEN_USERNAME: ${{github.actor}}
-          MAVEN_PASSWORD: ${{github.token}}
-        run: mvn -s ./.github/scripts/maven-settings.xml -DskipTests package
+        run: mvn -DskipTests package
 
       # Run all tests (even if some fail)
       - name: Run all tests
         working-directory: .
-        env:
-          MAVEN_USERNAME: ${{github.actor}}
-          MAVEN_PASSWORD: ${{github.token}}
-        run: mvn -s ./.github/scripts/maven-settings.xml -Dmaven.test.failure.ignore=true test
+        run: mvn -Dmaven.test.failure.ignore=true test
         
       # Produce test report
       - name: Test report

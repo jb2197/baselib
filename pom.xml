@@ -24,10 +24,19 @@
         <version>2.3.1</version>
     </parent>
 
+    <!-- Repository locations to fetch from -->
+    <repositories>
+        <repository>
+            <id>github</id>
+            <name>TheWorldAvatar Maven Repository</name>
+            <url>https://maven.pkg.github.com/TheWorldAvatar/*</url>
+        </repository>
+    </repositories>
+
     <!-- Repository locations to deploy to -->
     <distributionManagement>
         <repository>
-            <id>repo</id>
+            <id>github</id>
             <name>TheWorldAvatar Maven Repository</name>
             <url>https://maven.pkg.github.com/TheWorldAvatar/BaseLib</url>
         </repository>
