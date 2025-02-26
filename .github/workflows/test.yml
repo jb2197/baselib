@@ -45,11 +45,17 @@ jobs:
       # Build the code without test
       - name: Build code (no tests)
         working-directory: .
+        env:
+          GITHUB_ACTOR: ${{github.actor}}
+          GITHUB_TOKEN: ${{github.token}}
         run: mvn -DskipTests package
 
       # Run all tests (even if some fail)
       - name: Run all tests
         working-directory: .
+        env:
+          GITHUB_ACTOR: ${{github.actor}}
+          GITHUB_TOKEN: ${{github.token}}
         run: mvn -Dmaven.test.failure.ignore=true test
         
       # Produce test report
