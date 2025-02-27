@@ -28,7 +28,7 @@
     <repositories>
         <repository>
             <id>github</id>
-            <name>TheWorldAvatar Maven Repository</name>
+            <name>The World Avatar Maven Repository</name>
             <url>https://maven.pkg.github.com/TheWorldAvatar/*</url>
         </repository>
     </repositories>
@@ -37,9 +37,14 @@
     <distributionManagement>
         <repository>
             <id>github</id>
-            <name>TheWorldAvatar Maven Repository</name>
+            <name>The World Avatar BaseLib Maven Repository</name>
             <url>https://maven.pkg.github.com/TheWorldAvatar/baselib</url>
         </repository>
+        <snapshotRepository>
+            <id>github</id>
+            <name>The World Avatar BaseLib Maven Repository</name>
+            <url>https://maven.pkg.github.com/TheWorldAvatar/baselib</url>
+        </snapshotRepository>
     </distributionManagement>
 
     <!-- Build Configuration -->
