@@ -19,7 +19,9 @@ on:
       - .github/scripts/maven-settings.xml
       - .github/workflows/test.yml
 
-
+permissions:
+  contents: read
+        
 # Job definitions
 jobs:
 
@@ -33,8 +35,6 @@ jobs:
       # Checkout the repository
       - name: Checkout repository
         uses: actions/checkout@v4
-permissions:
-  contents: read
 
       # Set up JDK 11
       - name: Set up JDK 11
