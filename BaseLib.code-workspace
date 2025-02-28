@@ -6,9 +6,5 @@
 		{
 			"path": "python_wrapper"
 		}
-	],
-    "settings": {
-        "java.compile.nullAnalysis.mode": "automatic",
-        "java.configuration.updateBuildConfiguration": "automatic"
-    }
+	]
 }
