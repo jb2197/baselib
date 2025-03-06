@@ -1529,7 +1529,11 @@ class BaseClass(BaseModel, validate_assignment=True, validate_default=True):
         return set(tuple(list_keys_to_exclude))
 
     def __eq__(self, other: Any) -> bool:
-        return self.__hash__() == other.__hash__()
+        try:
+            return self.instance_iri == other.instance_iri
+        except TypeError:
+            # if other doesn't have instance_iri, then it's not comparable
+            return False
 
     def __hash__(self):
         # using instance_iri for hash so that iri and object itself are treated the same in set operations
