@@ -1535,9 +1535,12 @@ class BaseClass(BaseModel, validate_assignment=True, validate_default=True):
             # if other doesn't have instance_iri, then it's not comparable
             return False
 
+    __hash_cache__ = None
     def __hash__(self):
         # using instance_iri for hash so that iri and object itself are treated the same in set operations
-        return self.instance_iri.__hash__()
+        if self.__hash_cache__ is None:
+            self.__hash_cache__ = self.instance_iri.__hash__()
+        return self.__hash_cache__
         # TODO [future] do we want to provide the method to compare if the content of two instances are the same?
         # a use case would be to compare if the chemicals in the two bottles are the same concentration
         # return self._make_hash_sha256_(self.dict(exclude=self._exclude_keys_for_compare_()))
