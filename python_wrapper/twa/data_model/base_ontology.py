@@ -1276,9 +1276,13 @@ class BaseClass(BaseModel, validate_assignment=True, validate_default=True):
             # if fetched != cached --> remote changed, now should check if local has changed:
             #     if local == cached --> no local changes, can update both cache and local values with fetched value
             #     if local != cached --> there are local changed, now should check if the local changes are the same as remote (unlikely tho)
-            #         if local != fetched --> now check the flag force_overwrite_local
-            #             if True --> update local and cache values with fetched value
-            #             if False --> raise exception
+            #         if local != fetched --> the actions to take depend on what is the nature of the differences in changes:
+            #             if there's any object that is modified by both local and remote
+            #                 --> check the flag force_overwrite_local
+            #                     if True --> update local and cache values with fetched value
+            #                     if False --> raise exception
+            #             else, it means that the local changes are not in conflict with remote changes
+            #                 --> update local values with fetched value (take the union of local and remote changes)
             #         if local == fetched --> (which is really unlikely) update cache only
             # in practice, the above logic can be simplified:
             if fetched_value != cached_value:
@@ -1287,20 +1291,41 @@ class BaseClass(BaseModel, validate_assignment=True, validate_default=True):
                     setattr(self, p_dct['field'], copy.deepcopy(fetched_value))
                 else:
                     # there are both local and remote changes, now compare these two
-                    if local_value != fetched_value and not force_overwrite_local:
-                        raise Exception(f"""The remote changes in knowledge graph conflicts with local changes
-                            for {self.instance_iri} {p_iri}:
-                            Objects appear in the remote but not in the local: {fetched_value}
-                            Triples appear in the local but not the remote: {local_value}
-                            Triples cached in the local: {cached_value}""")
-                    else:
-                        # update the local changes as force_overwrite_local is set to True
-                        setattr(self, p_dct['field'], copy.deepcopy(fetched_value))
-                        warnings.warn(f"""The remote changes in knowledge graph conflicts with local changes
-                            for {self.instance_iri} {p_iri} but is now overwritten by the remote changes:
-                            Objects appear in the remote but not in the local: {fetched_value}
-                            Triples appear in the local but not the remote: {local_value}
-                            Triples cached in the local: {cached_value}""")
+                    if local_value != fetched_value:
+                        local_added = local_value - cached_value
+                        local_removed = cached_value - local_value
+                        fetched_added = fetched_value - cached_value
+                        fetched_removed = cached_value - fetched_value
+                        # check if the local changes are in conflict with remote changes
+                        if bool(local_added & fetched_removed) or bool(local_removed & fetched_added):
+                            # this means that the same object is modified by both local and remote but in different ways
+                            # e.g. local has added some objects that are removed in remote
+                            # or local has removed some objects that are added in remote
+                            # check the flag force_overwrite_local
+                            if not force_overwrite_local:
+                                raise Exception(f"""The remote changes in knowledge graph conflicts with local changes
+                                    for {self.instance_iri} {p_iri}:
+                                    Objects appear in the remote: {fetched_value}
+                                    Objects appear in the local: {local_value}
+                                    Objects removed in the remote: {fetched_removed}
+                                    Objects removed in the local: {local_removed}
+                                    Objects added in the remote: {fetched_added}
+                                    Objects added in the local: {local_added}
+                                    Objects cached in the local: {cached_value}""")
+                            else:
+                                # update the local changes as force_overwrite_local is set to True
+                                # although the local changes are in conflict with remote changes
+                                setattr(self, p_dct['field'], copy.deepcopy(fetched_value))
+                                warnings.warn(f"""The remote changes in knowledge graph conflicts with local changes
+                                    for {self.instance_iri} {p_iri} but is now overwritten by the remote changes:
+                                    Objects appear in the remote: {fetched_value}
+                                    Objects appeared in the local BUT ARE NOW OVERWRITTEN BY THE REMOTE VALUES: {local_value}
+                                    Objects cached in the local BUT ARE NOW OVERWRITTEN BY THE REMOTE VALUES: {cached_value}""")
+                        else:
+                            # this means that the local changes are not in conflict with remote changes
+                            # we can take the union of local and remote changes
+                            # and update the cached values with fetched value (this is delayed to the end)
+                            setattr(self, p_dct['field'], local_value.union(copy.deepcopy(fetched_value)))
             # the cache can be updated regardless as long as there are no exceptions
             self._latest_cache[p_dct['field']] = copy.deepcopy(fetched_value)
 
