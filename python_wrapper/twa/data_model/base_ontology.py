@@ -767,6 +767,27 @@ class BaseClass(BaseModel, validate_assignment=True, validate_default=True):
     def init_instance_iri(cls) -> str:
         return init_instance_iri(cls.rdfs_isDefinedBy.namespace_iri, cls.__name__)
 
+    def __new__(cls, **data):
+        # this is to support loading the nested JSON while not throwing error for already registered objects when traversed again
+        iri = data.get("instance_iri")
+        if iri and cls.object_lookup and iri in KnowledgeGraph.construct_object_lookup():
+            if type(KnowledgeGraph.get_object_from_lookup(iri)) == cls:
+                # if an instance with this IRI is already created, bail out
+                # this shortcircuits the __init__ method
+                # and avoids the creation of a new object
+                # TODO [future work] do we want to check if the content is the same?
+                # TODO [future work] what about when self.__class__.rdfs_isDefinedBy.is_dev_mode()?
+                return cls.object_lookup[iri]
+            else:
+                # if an instance with this IRI is already created, but it is not the same class
+                # we need to remove the old instance from the lookup table
+                # so that this supports the case of multiple inheritance
+                warnings.warn(f"An object with the same IRI {iri} has already been instantiated and registered with type {type(KnowledgeGraph.get_object_from_lookup(iri))}. Replacing its regiatration now with type {cls}.")
+                del type(KnowledgeGraph.get_object_from_lookup(iri)).object_lookup[iri]
+        # otherwise allocate a brand-new object
+        # this applies to the case of multiple inheritance as well
+        return super().__new__(cls)
+
     def __init__(self, **data):
         # handle the case when rdfs_comment and rdfs_label are provided as a non-set value
         if 'rdfs_comment' in data and not isinstance(data['rdfs_comment'], set):
@@ -799,31 +820,17 @@ class BaseClass(BaseModel, validate_assignment=True, validate_default=True):
         Returns:
             None: It calls the super().model_post_init(__context) to finish the post init process
         """
+        # at this point, `self` is either brand-new or the reused object
+        # still need to register the object to the lookup table
         if not bool(self.instance_iri):
             self.instance_iri = self.__class__.init_instance_iri()
         # set new instance to the global look up table, so that we can avoid creating the same instance multiple times
-        self._register_object()
-        return super().model_post_init(__context)
-
-    def _register_object(self):
-        """
-        This function registers the object to the lookup dictionary of the class.
-        It should not be called by the user.
-
-        Raises:
-            ValueError: The object with the same IRI has already been registered
-        """
         if self.__class__.object_lookup is None:
             self.__class__.object_lookup = {}
-        if self.instance_iri in self.__class__.object_lookup:
-            if type(self.__class__.object_lookup[self.instance_iri]) == type(self):
-                # TODO and not self.__class__.rdfs_isDefinedBy.is_dev_mode()?
-                raise ValueError(
-                    f"An object with the same IRI {self.instance_iri} has already been instantiated and registered with the same type {type(self)}.")
-            else:
-                warnings.warn(f"An object with the same IRI {self.instance_iri} has already been instantiated and registered with type {type(self.__class__.object_lookup[self.instance_iri])}. Replacing its regiatration now with type {type(self)}.")
-                del self.__class__.object_lookup[self.instance_iri]
-        self.__class__.object_lookup[self.instance_iri] = self
+        # register the object to the lookup dictionary of the class
+        if self.instance_iri not in self.__class__.object_lookup:
+            self.__class__.object_lookup[self.instance_iri] = self
+        return super().model_post_init(__context)
 
     @classmethod
     def retrieve_subclass(cls, iri: str) -> Type[BaseClass]:
