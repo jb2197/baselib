@@ -1220,7 +1220,7 @@ class BaseClass(BaseModel, validate_assignment=True, validate_default=True):
             return
         traversed_iris.add(self.instance_iri)
         for f, cached in self._latest_cache.items():
-            f_tp = get_args(self.model_fields[f].annotation)[0] if type(self.model_fields[f].annotation) == _UnionGenericAlias else self.model_fields[f].annotation
+            f_tp = get_args(self.__class__.model_fields[f].annotation)[0] if type(self.__class__.model_fields[f].annotation) == _UnionGenericAlias else self.__class__.model_fields[f].annotation
             if ObjectProperty._is_inherited(f_tp):
                 _o = getattr(self, f) if getattr(self, f) is not None else set()
                 disconnected_object_properties = cached - _o
@@ -1230,7 +1230,7 @@ class BaseClass(BaseModel, validate_assignment=True, validate_default=True):
                         obj._create_cache(recursive_depth, traversed_iris)
         # secondly (and finally), create cache for all currently connected properties
         recursive_depth = max(recursive_depth - 1, 0) if recursive_depth > -1 else max(recursive_depth - 1, -1)
-        for f, field_info in self.model_fields.items():
+        for f, field_info in self.__class__.model_fields.items():
             tp = get_args(field_info.annotation)[0] if type(field_info.annotation) == _UnionGenericAlias else field_info.annotation
             if DatatypeProperty._is_inherited(tp):
                 self._latest_cache[f] = copy.deepcopy(getattr(self, f))
@@ -1257,7 +1257,7 @@ class BaseClass(BaseModel, validate_assignment=True, validate_default=True):
 
     def revert_local_changes(self):
         """ This function reverts the local changes made to the python object to cached values. """
-        for f, field_info in self.model_fields.items():
+        for f, field_info in self.__class__.model_fields.items():
             if BaseProperty._is_inherited(field_info.annotation):
                 setattr(self, f, copy.deepcopy(self._latest_cache.get(f, field_info.annotation(set()))))
             else:
@@ -1452,7 +1452,7 @@ class BaseClass(BaseModel, validate_assignment=True, validate_default=True):
         if self.instance_iri in traversed_iris:
             return g_to_remove, g_to_add
         traversed_iris.add(self.instance_iri)
-        for f, field_info in self.model_fields.items():
+        for f, field_info in self.__class__.model_fields.items():
             # enable handling Optional[]
             tp: ObjectProperty | DatatypeProperty = get_args(field_info.annotation)[0] if type(field_info.annotation) == _UnionGenericAlias else field_info.annotation
             if BaseProperty._is_inherited(tp):
@@ -1531,7 +1531,7 @@ class BaseClass(BaseModel, validate_assignment=True, validate_default=True):
         if g is None:
             g = Graph()
         g.add((URIRef(self.instance_iri), RDF.type, URIRef(self.rdf_type)))
-        for f, field_info in self.model_fields.items():
+        for f, field_info in self.__class__.model_fields.items():
             tp = get_args(field_info.annotation)[0] if type(field_info.annotation) == _UnionGenericAlias else field_info.annotation
             if ObjectProperty._is_inherited(tp):
                 tp: ObjectProperty
