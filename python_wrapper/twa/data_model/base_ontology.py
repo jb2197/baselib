@@ -1277,7 +1277,9 @@ class BaseClass(BaseModel, validate_assignment=True, validate_default=True):
             #     if local == cached --> no local changes, can update both cache and local values with fetched value
             #     if local != cached --> there are local changed, now should check if the local changes are the same as remote (unlikely tho)
             #         if local != fetched --> the actions to take depend on what is the nature of the differences in changes:
-            #             if there's any object that is modified by both local and remote
+            #             here the check is for the intent of the changes, if either side wants to delete an object but the other side wants to keep it
+            #             then it means that the same object is modified by both local and remote but in different ways
+            #             additions on the both sides are not a problem
             #                 --> check the flag force_overwrite_local
             #                     if True --> update local and cache values with fetched value
             #                     if False --> raise exception
@@ -1291,16 +1293,18 @@ class BaseClass(BaseModel, validate_assignment=True, validate_default=True):
                     setattr(self, p_dct['field'], copy.deepcopy(fetched_value))
                 else:
                     # there are both local and remote changes, now compare these two
+                    # TODO [future work] the cardinality check should be done as part of native Pydantic validation for customised sets
                     if local_value != fetched_value:
-                        local_added = local_value - cached_value
                         local_removed = cached_value - local_value
-                        fetched_added = fetched_value - cached_value
+                        local_kept = local_value.intersection(cached_value)
                         fetched_removed = cached_value - fetched_value
+                        fetched_kept = fetched_value.intersection(cached_value)
                         # check if the local changes are in conflict with remote changes
-                        if bool(local_added & fetched_removed) or bool(local_removed & fetched_added):
-                            # this means that the same object is modified by both local and remote but in different ways
-                            # e.g. local has added some objects that are removed in remote
-                            # or local has removed some objects that are added in remote
+                        if bool(local_kept & fetched_removed) or bool(local_removed & fetched_kept):
+                            # this means that the same object is "modified" by both local and remote but in different ways (from the intent of the changes)
+                            # e.g. local wants to keep some objects that are removed in remote
+                            # or local has removed some objects that are intended to be kept by remote changes
+                            # NOTE that this is different from the case where only local deletes some objects while the remote is the same as cached (i.e. no remote changes)
                             # check the flag force_overwrite_local
                             if not force_overwrite_local:
                                 raise Exception(f"""The remote changes in knowledge graph conflicts with local changes
@@ -1309,8 +1313,8 @@ class BaseClass(BaseModel, validate_assignment=True, validate_default=True):
                                     Objects appear in the local: {local_value}
                                     Objects removed in the remote: {fetched_removed}
                                     Objects removed in the local: {local_removed}
-                                    Objects added in the remote: {fetched_added}
-                                    Objects added in the local: {local_added}
+                                    Objects intended to be kept in the remote: {fetched_kept}
+                                    Objects intended to be kept in the local: {local_kept}
                                     Objects cached in the local: {cached_value}""")
                             else:
                                 # update the local changes as force_overwrite_local is set to True
