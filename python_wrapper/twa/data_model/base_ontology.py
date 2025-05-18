@@ -1502,6 +1502,9 @@ class BaseClass(BaseModel, validate_assignment=True, validate_default=True):
 
         if not self._exist_in_kg:
             g_to_add.add((URIRef(self.instance_iri), RDF.type, URIRef(self.rdf_type)))
+            # also add rdf_type for its parent classes
+            for i in range(1, self.__class__.__mro__.index(BaseClass)):
+                g_to_add.add((URIRef(self.instance_iri), RDF.type, URIRef(self.__class__.__mro__[i].rdf_type)))
             # assume that the instance is in KG once the triples are added
             # TODO [future] or need to a better way to represent this?
             self._exist_in_kg = True
