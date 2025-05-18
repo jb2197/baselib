@@ -113,6 +113,8 @@ class KnowledgeGraph(BaseModel):
     @classmethod
     def clear_object_lookup(cls):
         """ This method is used to clear the object lookup dictionary in Python memory. """
+        if cls.class_lookup is None:
+            return
         for cls in cls.class_lookup.values():
             cls.clear_object_lookup()
 
