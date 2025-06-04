@@ -4,12 +4,12 @@ on:
     branches:
       - main
     paths:
-      - 'baselib/python_wrapper/**'
+      - 'python_wrapper/**'
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   pages: write
 
 jobs:
@@ -26,7 +26,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # CUSTOM_DOMAIN: optionaldomain.com
-          CONFIG_FILE: baselib/python_wrapper/mkdocs.yml
+          CONFIG_FILE: python_wrapper/mkdocs.yml
           EXTRA_PACKAGES: build-base
           # GITHUB_DOMAIN: github.myenterprise.com
-          REQUIREMENTS: baselib/python_wrapper/twa_docs_deploy.txt
+          REQUIREMENTS: python_wrapper/twa_docs_deploy.txt
